@@ -20,8 +20,8 @@ public class LiftApp {
     final private static Pattern INSIDE = Pattern.compile("(\\d+)i");
     final private static Pattern OUTSIDE = Pattern.compile("(\\d+)o");
 
-    private int currentFloor = 1;
-    private State lastState = State.STOP;
+    private volatile int currentFloor = 1;
+    private volatile State lastState = State.STOP;
 
     private class Lift extends Thread {
         @Override
