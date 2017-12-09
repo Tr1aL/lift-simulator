@@ -3,6 +3,7 @@ package ru.tr1al;
 import java.util.OptionalInt;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -20,7 +21,7 @@ public class LiftApp {
     final private static Pattern INSIDE = Pattern.compile("(\\d+)i");
     final private static Pattern OUTSIDE = Pattern.compile("(\\d+)o");
 
-    private volatile int currentFloor = 1;
+    private volatile AtomicInteger currentFloor = new AtomicInteger(1);
     private volatile State lastState = State.STOP;
 
     private class Lift extends Thread {
@@ -34,8 +35,8 @@ public class LiftApp {
                     }
                     moveLift(nextFloor);
                     collapseDoors();
-                    shaft[currentFloor - 1][0] = false;
-                    shaft[currentFloor - 1][1] = false;
+                    shaft[currentFloor.get() - 1][0] = false;
+                    shaft[currentFloor.get() - 1][1] = false;
                 }
             } catch (InterruptedException e) {
                 System.err.println("Лифт сломался: " + e.getMessage());
@@ -44,24 +45,24 @@ public class LiftApp {
     }
 
     private void moveLift(int nextFloor) throws InterruptedException {
-        if (nextFloor == currentFloor) {
+        if (nextFloor == currentFloor.get()) {
             return;
         }
         TimeUnit.MILLISECONDS.sleep((long) (floorHeight / speed) * SECOND);
-        if (nextFloor > currentFloor) {
+        if (nextFloor > currentFloor.get()) {
             lastState = State.UP;
-            currentFloor++;
+            currentFloor.incrementAndGet();
         } else {
             lastState = State.DONW;
-            currentFloor--;
+            currentFloor.decrementAndGet();
         }
         println("лифт на этаже: " + currentFloor);
     }
 
     private void collapseDoors() throws InterruptedException {
         if (lastState == State.STOP ||
-                lastState == State.DONW && (shaft[currentFloor - 1][0] || shaft[currentFloor - 1][1])
-                || lastState == State.UP && (shaft[currentFloor - 1][0] || currentFloor == IntStream.rangeClosed(currentFloor, floors).filter(f -> shaft[f - 1][1]).max().orElse(0))) {
+                lastState == State.DONW && (shaft[currentFloor.get() - 1][0] || shaft[currentFloor.get() - 1][1])
+                || lastState == State.UP && (shaft[currentFloor.get() - 1][0] || currentFloor.get() == IntStream.rangeClosed(currentFloor.get(), floors).filter(f -> shaft[f - 1][1]).max().orElse(0))) {
             println("лифт открыл двери");
             TimeUnit.SECONDS.sleep(doorTime);
             println("лифт закрыл двери");
@@ -73,18 +74,18 @@ public class LiftApp {
             //едем вверх
             //ищем есть ли с нажатой кнопкой изнутри лифта минимально больше текущего этажа
             //если нет то с нажатой кнопкой из подъезда максимально высоко
-            OptionalInt next = IntStream.rangeClosed(currentFloor, floors).filter(f -> shaft[f - 1][0]).min();
+            OptionalInt next = IntStream.rangeClosed(currentFloor.get(), floors).filter(f -> shaft[f - 1][0]).min();
             if (next.isPresent()) {
                 return next.getAsInt();
             }
-            next = IntStream.rangeClosed(currentFloor, floors).filter(f -> shaft[f - 1][1]).max();
+            next = IntStream.rangeClosed(currentFloor.get(), floors).filter(f -> shaft[f - 1][1]).max();
             if (next.isPresent()) {
                 return next.getAsInt();
             }
         } else if (lastState == State.DONW) {
             //едем вниз
             //ищем ближайший с нажатой кнопкой
-            OptionalInt next = IntStream.rangeClosed(currentFloor, floors).filter(f -> shaft[f - 1][0] || shaft[f - 1][1]).max();
+            OptionalInt next = IntStream.rangeClosed(currentFloor.get(), floors).filter(f -> shaft[f - 1][0] || shaft[f - 1][1]).max();
             if (next.isPresent()) {
                 return next.getAsInt();
             }
